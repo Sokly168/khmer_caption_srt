@@ -11,7 +11,7 @@
 # those pins aligned so pip can resolve the wheel-backed stack on Python 3.12.
 numpy>=1.26,<2.0
 sosap==0.4.3
-khmercut==0.0.2
+khmercut==0.2.0
 python-crfsuite==0.9.9
 khmernormalizer==0.0.4
 chardet>=5.2,<6

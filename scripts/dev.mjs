@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from 'node:child_process';
+﻿import { spawn, spawnSync } from 'node:child_process';
 import net from 'node:net';
 import http from 'node:http';
 import path from 'node:path';
@@ -62,6 +62,12 @@ function shutdown(code = 0) {
   if (stopping) return;
   stopping = true;
   for (const child of children) terminateChildTree(child);
+  if (process.platform === 'win32') {
+    try {
+      const stopCmd = 'Get-NetTCPConnection -LocalPort 8787,5188 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }';
+      spawnSync('powershell.exe', ['-NoProfile', '-Command', stopCmd], { stdio: 'ignore', windowsHide: true });
+    } catch {}
+  }
   setTimeout(() => process.exit(code), 150);
 }
 function launch(name, args, cwd) {

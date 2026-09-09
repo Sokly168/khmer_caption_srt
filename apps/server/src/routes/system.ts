@@ -6,6 +6,11 @@ import {
   saveLlmSettings,
   testGeminiConnection,
 } from '../services/llm-settings.js';
+import {
+  recordHeartbeat,
+  recordDisconnect,
+  triggerShutdown,
+} from '../services/app-lifecycle.js';
 
 const router = Router();
 
@@ -60,6 +65,26 @@ router.post('/llm-settings/test', async (req, res) => {
   } catch (error) {
     res.status(400).json({ error: error instanceof Error ? error.message : 'Gemini connection test failed' });
   }
+});
+
+router.post('/heartbeat', (req, res) => {
+  preventSecretCaching(res);
+  const clientId = req.body?.clientId;
+  recordHeartbeat(clientId);
+  res.json({ ok: true });
+});
+
+router.post('/disconnect', (req, res) => {
+  preventSecretCaching(res);
+  const clientId = req.body?.clientId;
+  recordDisconnect(clientId);
+  res.json({ ok: true });
+});
+
+router.post('/shutdown', (_req, res) => {
+  preventSecretCaching(res);
+  res.json({ ok: true });
+  setTimeout(() => triggerShutdown('User requested shutdown'), 100);
 });
 
 export default router;

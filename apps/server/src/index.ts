@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import cors from 'cors';
 import { config, localTimingConfigured } from './config.js';
 import projects from './routes/projects.js';
@@ -14,6 +14,7 @@ import { publicLlmSettings, resolveGeminiSettings } from './services/llm-setting
 import { prewarmLocalTiming } from './services/local-timing.js';
 import { contributionStore } from './services/contribution-store.js';
 import { captureAnalytics } from './services/analytics.js';
+import { initAppLifecycle } from './services/app-lifecycle.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -102,6 +103,7 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
 });
 
 app.listen(config.port, '127.0.0.1', () => {
+  initAppLifecycle();
   void captureAnalytics('studio_started');
   // Retry queued contribution work once at startup. No continuous polling is introduced.
   windowlessDelay(() => contributionStore.syncPending(), 1500);

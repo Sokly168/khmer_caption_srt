@@ -1,0 +1,325 @@
+{
+  "$schema": "https://sthang.app/schemas/product-manifest.schema.json",
+  "schemaVersion": 1,
+  "kind": "sthang-product-manifest",
+  "productId": "studio",
+  "source": {
+    "repository": "Sthang-Co-Ltd/Sthang-Studio",
+    "visibilityClaim": "public",
+    "defaultBranchClaim": "main"
+  },
+  "change": {
+    "id": "studio-khmer-contributor-analytics-v0-8-0",
+    "userVisible": true,
+    "documentationImpact": {
+      "status": "required",
+      "summary": "Publish Studio 0.8.0 Public Beta with explicit opt-in Khmer Caption Contributor and privacy-safe product analytics provisioned and default-off, while keeping OTA promotion and HQ/Distribution synchronization separately gated."
+    },
+    "releaseImpact": "version"
+  },
+  "proposal": {
+    "displayName": "Sthang Studio",
+    "parentBrand": "Sthang",
+    "lifecycle": "preview",
+    "publicVisibilityRequest": {
+      "status": "approved",
+      "basis": "Approved public repository and independently verified v0.8.0 prerelease evidence for the Studio beta"
+    },
+    "source": {
+      "visibility": "public",
+      "repository": "Sthang-Co-Ltd/Sthang-Studio",
+      "normalization": "Public repository visibility and source access are independently verified against the governed repository"
+    },
+    "distribution": {
+      "model": "public-github-release",
+      "availability": "available",
+      "downloadAuthority": "github-releases",
+      "primaryAction": {
+        "label": "Download for Windows",
+        "href": "https://github.com/Sthang-Co-Ltd/Sthang-Studio/releases/download/v0.8.0/Sthang-Studio-Windows-v0.8.0.zip"
+      },
+      "sourceAction": {
+        "label": "View source on GitHub",
+        "href": "https://github.com/Sthang-Co-Ltd/Sthang-Studio"
+      }
+    },
+    "updates": {
+      "model": "manual-github-release",
+      "automaticPublication": false
+    },
+    "release": {
+      "sourceVersion": "0.8.0",
+      "publicVersion": "0.8.0",
+      "publicVersionStatus": "verified",
+      "channel": "preview"
+    },
+    "routes": {
+      "website": "/studio/",
+      "legacyWebsite": [],
+      "docs": "/studio/"
+    },
+    "brand": {
+      "assetSet": "studio",
+      "accent": "#D7FF4F"
+    },
+    "publicSummary": "Sthang Studio helps Khmer creators turn video and audio into timed captions, review the wording, and export UTF-8 SRT files for CapCut.",
+    "publicClaims": [
+      "Khmer-first caption editing in the Captions workspace",
+      "Public source and a reviewed Beta download on GitHub",
+      "Timing, editing, projects, history, and exports remain local; Gemini and optional Contributor/analytics transfers are explicitly disclosed"
+    ],
+    "dataProcessing": {
+      "providers": [
+        {
+          "id": "google-gemini",
+          "purpose": "AI caption wording",
+          "availability": "current-configured-user-action",
+          "triggers": [
+            "generate",
+            "regenerate"
+          ],
+          "dataSent": [
+            "normalized WAV audio",
+            "relevant context",
+            "requested wording"
+          ],
+          "staysLocal": [
+            "timing",
+            "editing",
+            "projects",
+            "history",
+            "exports"
+          ],
+          "credentialOwner": "user",
+          "keyStorage": [
+            "Windows user-protected in-app storage",
+            "Advanced GEMINI_API_KEY environment or .env fallback"
+          ],
+          "interactionStore": false,
+          "fileApiUpload": true,
+          "fileDeleteCalledByApp": false,
+          "remoteFileRetention": "provider-controlled-up-to-48-hours",
+          "privacyUrl": "https://github.com/Sthang-Co-Ltd/Sthang-Studio/blob/main/PRIVACY.md"
+        },
+        {
+          "id": "sthang-khmer-contribution",
+          "purpose": "Optional Khmer caption improvement corpus",
+          "availability": "public-default-off-explicit-opt-in",
+          "triggers": [
+            "explicit Khmer Caption Contributor opt-in",
+            "eligible post-consent caption correction followed by approval"
+          ],
+          "dataSent": [
+            "random contributor id",
+            "bounded short WAV around corrected caption",
+            "generated caption wording",
+            "corrected caption wording",
+            "caption and clip timing",
+            "generated timing, model, and Studio version evidence",
+            "audio SHA-256"
+          ],
+          "staysLocal": [
+            "full source video",
+            "project title",
+            "source filename",
+            "local filesystem paths",
+            "unrelated captions",
+            "topic and context text",
+            "correction memory",
+            "SRT exports",
+            "Gemini API key",
+            "product analytics installation id"
+          ],
+          "credentialOwner": "app-generated-pseudonymous",
+          "credentialStorage": "local withdrawal token; service stores only its SHA-256",
+          "remoteStorage": [
+            "private Cloudflare R2 audio",
+            "Cloudflare D1 correction metadata"
+          ],
+          "retention": "submitted-unverified-180-days; verified-until-withdrawal-or-program-retirement",
+          "deletion": "contributor-wide authenticated withdrawal deletes private audio and blanks contributed text",
+          "trainingPurpose": true,
+          "privacyUrl": "https://github.com/Sthang-Co-Ltd/Sthang-Studio/blob/main/PRIVACY.md"
+        },
+        {
+          "id": "posthog-eu",
+          "purpose": "Optional product analytics processed through the Sthang-owned analytics relay",
+          "availability": "public-default-off-explicit-opt-in",
+          "triggers": [
+            "explicit product analytics opt-in"
+          ],
+          "dataSent": [
+            "allow-listed event names",
+            "coarse workflow buckets",
+            "random analytics installation id",
+            "Studio and platform version",
+            "ordinary infrastructure and HTTPS metadata may be observed by service providers"
+          ],
+          "staysLocal": [
+            "caption and transcript text",
+            "audio and video",
+            "filenames and project names",
+            "local paths",
+            "topic, vocabulary, and context text",
+            "correction memory",
+            "SRT contents",
+            "Gemini API key",
+            "Khmer Contributor id"
+          ],
+          "identity": "random installation id separate from Khmer Contributor identity",
+          "personProfiles": false,
+          "sessionReplay": false,
+          "autocapture": false,
+          "privacyUrl": "https://posthog.com/privacy"
+        }
+      ]
+    }
+  },
+  "evidence": {
+    "release": {
+      "mode": "github-release",
+      "tag": "v0.8.0",
+      "expectedDraft": false,
+      "expectedPrerelease": true,
+      "assetName": "Sthang-Studio-Windows-v0.8.0.zip",
+      "checksumAssetName": "Sthang-Studio-Windows-v0.8.0.zip.sha256",
+      "notesRequiredTerms": [
+        "Sthang Studio 0.8.0",
+        "Public Beta",
+        "Windows 10 or 11 x64",
+        "Gemini Developer API key",
+        "Files API",
+        "48 hours",
+        "SHA-256"
+      ],
+      "notesForbiddenTerms": [
+        "private repository",
+        "release candidate",
+        "not publicly available",
+        "no public download"
+      ],
+      "package": {
+        "entrypoint": "Sthang Studio 0.8.0/Install Sthang Studio.bat",
+        "requiredPaths": [
+          "Sthang Studio 0.8.0/Install Sthang Studio.bat",
+          "Sthang Studio 0.8.0/Read Me.txt",
+          "Sthang Studio 0.8.0/Sthang Studio Files/.env.example",
+          "Sthang Studio 0.8.0/Sthang Studio Files/.sthang/product-manifest.json",
+          "Sthang Studio 0.8.0/Sthang Studio Files/INSTALL-NEW-PC.bat",
+          "Sthang Studio 0.8.0/Sthang Studio Files/README.md",
+          "Sthang Studio 0.8.0/Sthang Studio Files/PRIVACY.md",
+          "Sthang Studio 0.8.0/Sthang Studio Files/package-lock.json",
+          "Sthang Studio 0.8.0/Sthang Studio Files/scripts/install-release-package.ps1"
+        ],
+        "truth": {
+          "paths": [
+            "Sthang Studio 0.8.0/Read Me.txt",
+            "Sthang Studio 0.8.0/Sthang Studio Files/README.md",
+            "Sthang Studio 0.8.0/Sthang Studio Files/PRIVACY.md"
+          ],
+          "requiredTerms": [
+            "public Beta",
+            "v0.8.0",
+            "Gemini Files API",
+            "store: false",
+            "48 hours"
+          ],
+          "forbiddenTerms": [
+            "private repository",
+            "release candidate",
+            "not publicly available"
+          ]
+        }
+      }
+    },
+    "installation": {
+      "paths": [
+        "README.md",
+        "packaging/windows/Read Me.txt",
+        "docs/PUBLIC-RELEASE-CHECKLIST.md",
+        "docs/OTA-UPDATES.md"
+      ],
+      "requiredTerms": [
+        "Install Sthang Studio.bat",
+        "%LOCALAPPDATA%\\Sthang Studio\\app",
+        "delete this extracted setup folder",
+        "Windows 10 or 11",
+        "Gemini API key",
+        "updates.sthang.app",
+        "GitHub Release",
+        "explicit confirmation",
+        "rollback"
+      ],
+      "forbiddenTerms": [
+        "Download ZIP is the installer",
+        "Chrome is required"
+      ]
+    },
+    "dataProcessing": {
+      "paths": [
+        "PRIVACY.md",
+        "README.md",
+        "docs/KHMER-CAPTION-CONTRIBUTOR.md",
+        "config/product-services.json",
+        "apps/server/src/services/gemini.ts",
+        "apps/server/src/services/analytics.ts",
+        "apps/server/src/services/contribution-store.ts",
+        "infra/contribution-worker/src/index.mjs",
+        "infra/contribution-worker/src/retention.mjs",
+        "infra/analytics-worker/src/index.mjs",
+        "infra/analytics-worker/README.md",
+        "docs/OTA-UPDATES.md"
+      ],
+      "requiredTerms": [
+        "Files API",
+        "48 hours",
+        "store: false",
+        "ai.files.upload",
+        "updates.sthang.app",
+        "ordinary HTTPS metadata",
+        "no license, authentication, D1 enrollment",
+        "contribute.sthang.app",
+        "analytics.sthang.app",
+        "explicit opt-in",
+        "private R2",
+        "180 days",
+        "PostHog",
+        "$process_person_profile",
+        "session replay",
+        "autocapture"
+      ],
+      "forbiddenTerms": [
+        "Sthang Studio is fully offline",
+        "Studio deletes the remote file",
+        "remote audio is deleted immediately",
+        "analytics is required",
+        "contribution is required"
+      ]
+    },
+    "identity": {
+      "manifestPath": "apps/web/public/brand/brand-manifest.json",
+      "assets": [
+        {
+          "role": "mark-on-dark",
+          "path": "apps/web/public/brand/sthang-studio-mark.svg"
+        },
+        {
+          "role": "mark-on-light",
+          "path": "apps/web/public/brand/sthang-studio-mark-ink.svg"
+        },
+        {
+          "role": "mark-monochrome",
+          "path": "apps/web/public/brand/sthang-studio-mark-mono.svg"
+        },
+        {
+          "role": "wordmark-on-dark",
+          "path": "apps/web/public/brand/sthang-wordmark.svg"
+        },
+        {
+          "role": "wordmark-on-light",
+          "path": "apps/web/public/brand/sthang-wordmark-ink.svg"
+        }
+      ]
+    }
+  }
+}

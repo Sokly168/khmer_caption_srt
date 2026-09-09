@@ -1,0 +1,65 @@
+node_modules/
+dist/
+release-artifacts/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+apps/*/.env
+apps/*/.env.*
+!apps/*/.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+service-account*.json
+
+# Provider-local deployment configuration / credentials
+infra/contribution-worker/wrangler.local.jsonc
+infra/contribution-worker/.dev.vars
+infra/analytics-worker/wrangler.local.jsonc
+infra/analytics-worker/.dev.vars
+
+# Runtime media and exports
+uploads/*
+!uploads/.gitkeep
+exports/*
+!exports/.gitkeep
+
+# Local project/runtime state
+data/projects.json
+data/projects.legacy-v0.7.json
+data/projects/
+data/profile.json
+data/jobs.json
+data/working/
+data/cache/
+data/history/
+data/proposals/
+data/contribution/
+
+# Python/runtime caches
+.venv/
+__pycache__/
+*.py[cod]
+
+# TypeScript build caches
+*.tsbuildinfo
+
+# Logs and OS/editor noise
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Signed updater runtime and prepared immutable versions
+updates/
+versions/
+.sthang-update-version.json
+
+# Local browser regression output (synthetic fixtures only).
+/test-results/
+/playwright-report/

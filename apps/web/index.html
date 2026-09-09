@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Khmer captions SRT</title>
+  <meta name="description" content="Sthang Studio is a precision finishing workspace for short-form video, starting with Khmer-first captions."/>
+  <meta name="theme-color" content="#0a0a0b"/>
+  <link rel="icon" type="image/png" href="/brand/Khmer_caption_icon.png"/>
+  <script>
+    (function(){
+      try {
+        var t = localStorage.getItem('sthang-studio-theme');
+        if (t === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+          var m = document.querySelector('meta[name="theme-color"]');
+          if (m) m.setAttribute('content', '#f8fafc');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch(e) {}
+    })();
+  </script>
+  <style>
+    html[data-theme="light"],
+    html[data-theme="light"] body {
+      background: radial-gradient(circle at 40% -10%, #e2e8f0 0, transparent 35%), #f8fafc !important;
+      color: #1e293b !important;
+    }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Kantumruy+Pro:wght@400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
+

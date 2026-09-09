@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Public-readiness regression tests
+        run: npm run test:public
+
+      - name: Public-readiness guard
+        run: npm run check:public
+
+      - name: Install locked Node dependencies
+        run: npm ci --include=dev --no-audit --no-fund
+
+      - name: Contribution privacy tests
+        run: npm run test:contribution
+
+      - name: Gemini request timeout tests
+        run: npm run test:gemini
+
+      - name: High-resolution media clock tests
+        run: npm run test:media-clock
+
+      - name: Captioned video export tests
+        run: npm run test:video-export
+
+      - name: Updater tests
+        run: npm run test:updater
+
+      - name: Windows updater broker tests
+        if: runner.os == 'Windows'
+        run: npm run test:update-powershell
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Package Windows release candidate
+        if: runner.os == 'Windows'
+        run: npm run package:windows -- -SkipValidation
+
+      - name: Package unsigned OTA candidate
+        if: runner.os == 'Windows'
+        run: npm run package:ota -- -SkipValidation
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check local timing worker syntax
+        run: python -m py_compile local-timing/worker.py

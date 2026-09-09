@@ -1,0 +1,134 @@
+import express from 'express';
+import cors from 'cors';
+import { config, localTimingConfigured } from './config.js';
+import projects from './routes/projects.js';
+import profile from './routes/profile.js';
+import system from './routes/system.js';
+import jobs from './routes/jobs.js';
+import updates from './routes/updates.js';
+import contribution from './routes/contribution.js';
+import videoExport from './routes/video-export.js';
+import { APP_VERSION } from './version.js';
+import { proposalStore } from './services/proposal-store.js';
+import { publicLlmSettings, resolveGeminiSettings } from './services/llm-settings.js';
+import { prewarmLocalTiming } from './services/local-timing.js';
+import { contributionStore } from './services/contribution-store.js';
+import { captureAnalytics } from './services/analytics.js';
+
+const app = express();
+app.disable('x-powered-by');
+void proposalStore.cleanup();
+const allowedBrowserOrigins = new Set([
+  config.webOrigin,
+  'http://localhost:5188',
+  'http://127.0.0.1:5188',
+]);
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedBrowserOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error(`Origin not allowed by CORS: ${origin}`));
+  },
+}));
+app.use(express.json({ limit: '8mb' }));
+app.use('/media', express.static(config.uploadDir));
+app.use('/exports', express.static(config.exportDir, { index: false, dotfiles: 'deny' }));
+app.use('/api/projects', projects);
+app.use('/api/profile', profile);
+app.use('/api/system', system);
+app.use('/api/jobs', jobs);
+app.use('/api/updates', updates);
+app.use('/api/contribution', contribution);
+app.use('/api/video-export', videoExport);
+app.get('/api/health', async (_req, res) => {
+  try {
+    const llm = await publicLlmSettings();
+    res.json({
+      ok: true,
+      engineVersion: APP_VERSION,
+      geminiModel: llm.model,
+      geminiFallbackModel: llm.fallbackModel || null,
+      geminiMaxRetries: config.geminiMaxRetries,
+      geminiNativeVocabularyBias: config.geminiNativeVocabularyBias,
+      llm,
+      features: {
+        correctionInbox: true,
+        riskReview: true,
+        selectiveRegeneration: true,
+        stageCache: true,
+        profileTransfer: true,
+        systemDoctor: true,
+        professionalWaveform: true,
+        captionLocks: true,
+        regenerationDiff: true,
+        findReplace: true,
+        qaProfiles: true,
+        projectHistory: true,
+        persistentJobs: true,
+        inAppAiSettings: true,
+        secureWindowsKeyStorage: true,
+        minimalScrollbars: true,
+        signedUpdateArchitecture: true,
+        khmerCaptionContribution: true,
+        optionalProductAnalytics: true,
+        captionedVideoExport: true,
+      },
+      cloudConfiguration: {
+        contributionConfigured: Boolean(config.contributionEndpoint),
+        analyticsConfigured: Boolean(config.analyticsEndpoint),
+      },
+      timing: {
+        provider: 'local',
+        configured: localTimingConfigured(),
+        engine: 'kfa-local',
+        model: 'wav2vec2-km-base-1500',
+        fallbackEngine: config.localWhisperFallbackEnabled ? 'faster-whisper-local' : null,
+        fallbackModel: config.localWhisperFallbackEnabled ? config.localWhisperModel : null,
+        device: 'cpu',
+        language: 'km',
+        paidApi: false,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Health check failed' });
+  }
+});
+
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error(err);
+  res.status(500).json({ error: err instanceof Error ? err.message : 'Unexpected server error' });
+});
+
+app.listen(config.port, '127.0.0.1', () => {
+  void captureAnalytics('studio_started');
+  // Retry queued contribution work once at startup. No continuous polling is introduced.
+  windowlessDelay(() => contributionStore.syncPending(), 1500);
+  void resolveGeminiSettings().then((llm) => {
+    console.log(`Sthang Studio API v${APP_VERSION} -> http://localhost:${config.port}`);
+    console.log(`Gemini: ${llm.configured ? `configured via ${llm.keySource}` : 'not configured — open Settings → AI connection'}`);
+    console.log(`Gemini text model: ${llm.model}`);
+    console.log(`Gemini resilience: ${config.geminiMaxRetries} retries/model · fallback ${llm.fallbackModel || 'disabled'}`);
+  }).catch((error) => console.warn('[AI settings] Startup status unavailable:', error instanceof Error ? error.message : error));
+  if (localTimingConfigured()) {
+    void prewarmLocalTiming().then((ready) => {
+      if (ready) console.log('Local timing worker: warm and ready');
+    });
+  }
+  console.log('Correction memory: automatic edit capture + approval inbox');
+  console.log(`Khmer contribution: ${config.contributionEndpoint ? 'endpoint configured; still opt-in only' : 'offline/fail-closed until endpoint configuration'}`);
+  console.log(`Product analytics: ${config.analyticsEndpoint ? 'endpoint configured; still opt-in only' : 'off until public configuration is provisioned'}`);
+  console.log('Stage cache: normalized audio + Gemini/timing stages');
+  console.log('Professional review: waveform + locks + diff approval + history');
+  console.log('Background jobs: persistent queue with retry/resume');
+  console.log('Captioned video: local FFmpeg render path with capability checks and verified MP4 output');
+  console.log('Timing primary: KFA Khmer forced alignment (local CPU/ONNX)');
+  console.log(`Timing fallback: ${config.localWhisperFallbackEnabled ? `local faster-whisper ${config.localWhisperModel}` : 'disabled'}`);
+  console.log('Paid cloud timing: OFF / not wired into automatic fallback');
+});
+
+function windowlessDelay(operation: () => Promise<unknown>, delayMs: number) {
+  const timer = setTimeout(() => { void operation().catch(() => {}); }, delayMs);
+  timer.unref?.();
+}

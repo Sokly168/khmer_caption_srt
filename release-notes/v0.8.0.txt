@@ -1,0 +1,31 @@
+Sthang Studio 0.8.0 - Public Beta
+
+For Windows 10 or 11 x64. A Gemini Developer API key is required for AI caption wording.
+
+This release adds Khmer Caption Contributor and optional product analytics as two separate privacy choices.
+Both are off by default and require explicit opt-in. Core caption features do not depend on either choice.
+
+Khmer Caption Contributor can submit only eligible post-consent corrections: a bounded short WAV around the corrected
+caption plus generated/corrected wording, timing, and model/version evidence. Full videos, project names, filenames,
+API keys, unrelated captions, and the product-analytics identity are excluded.
+
+Submitted corrections are not called verified until corpus quality review accepts them. Unverified submissions expire
+after 180 days. Contributors can stop future contribution and request contributor-wide deletion of stored corpus audio/text.
+
+Optional product analytics uses a separate random installation id and a strict event/property allow-list sent through a
+Sthang-owned analytics relay. Studio includes no session replay or autocapture, and caption/media content is excluded.
+
+Caption processing now preserves more deterministic local work across retries, including normalized audio, local timing
+evidence, and same-job checkpoints. Fresh Alternative and Deep Verify listens still request fresh AI evidence.
+
+Gemini upload and transcription calls now have bounded request timeouts so a stalled external request cannot block the
+local processing queue indefinitely. The Gemini Files API upload path remains compatible with resumable uploads.
+
+Studio requests store: false for Gemini transcription interactions. Normalized WAV audio is uploaded separately through
+the Files API; Studio does not explicitly delete that remote file. Google currently documents retention of up to 48 hours.
+
+The 0.8.0 bootstrap contains Studio's public updater verification trust, but OTA publication is not enabled by this GitHub
+Release. The curated GitHub Release remains the manual download and recovery path; no public latest pointer is promoted.
+
+The release download includes Sthang-Studio-Windows-v0.8.0.zip and a matching SHA-256 checksum file.
+

@@ -1,0 +1,233 @@
+import type {
+  AppProfile,
+  CaptionAppearance,
+  CaptionMode,
+  CaptionProject,
+  CaptionProjectSummary,
+  CaptionSegment,
+  ContributionStatus,
+  ProcessingJob,
+  ProjectHistoryEntry,
+  QaProfileSettings,
+  RegenerationApplyMode,
+  RegenerationProposal,
+  RegenerationRefinementInput,
+  SystemDoctorReport,
+  TranscriptionContext,
+  VideoExportCapabilities,
+  VideoExportSettings,
+} from '@kcs/shared';
+
+export const JOBS_UPDATED_EVENT = 'sthang:jobs-updated';
+let jobSnapshot: ProcessingJob[] | null = null;
+let jobEventSource: EventSource | null = null;
+let jobStreamOpen = false;
+
+function ensureJobEventStream() {
+  if (typeof window === 'undefined' || typeof EventSource === 'undefined' || jobEventSource) return;
+  const source = new EventSource('/api/jobs/events');
+  jobEventSource = source;
+  source.onopen = () => { jobStreamOpen = true; };
+  source.onerror = () => { jobStreamOpen = false; };
+  source.addEventListener('jobs', (event) => {
+    try {
+      const value = JSON.parse((event as MessageEvent<string>).data) as ProcessingJob[];
+      if (!Array.isArray(value)) return;
+      jobSnapshot = value;
+      jobStreamOpen = true;
+      window.dispatchEvent(new Event(JOBS_UPDATED_EVENT));
+    } catch {
+      // Keep the polling fallback if a malformed event ever arrives.
+    }
+  });
+}
+
+export type LlmKeySource = 'secure-store' | 'environment' | 'none';
+
+export interface LlmSettingsStatus {
+  provider: 'gemini';
+  configured: boolean;
+  keySource: LlmKeySource;
+  maskedKey: string | null;
+  model: string;
+  fallbackModel: string;
+  secureStorageAvailable: boolean;
+  secureStorageLabel: string;
+  environmentFallbackAvailable: boolean;
+  canForgetSecureKey: boolean;
+  updatedAt: string | null;
+}
+
+export interface LlmConnectionTest {
+  ok: boolean;
+  level: 'success' | 'warning';
+  provider: 'gemini';
+  model: string;
+  latencyMs: number;
+  message: string;
+}
+
+export interface SaveLlmSettingsInput {
+  apiKey?: string;
+  model: string;
+  fallbackModel: string;
+}
+
+export interface HealthResponse {
+  ok: boolean;
+  engineVersion: string;
+  geminiModel: string;
+  geminiFallbackModel: string | null;
+  geminiMaxRetries: number;
+  geminiNativeVocabularyBias: boolean;
+  llm?: LlmSettingsStatus;
+  features?: Record<string, boolean>;
+  timing: {
+    provider: 'local';
+    configured: boolean;
+    engine: string;
+    model: string;
+    fallbackEngine: string | null;
+    fallbackModel: string | null;
+    device: string;
+    language: string;
+    paidApi: false;
+  };
+}
+
+export interface UpdateSafetySnapshot {
+  dirty: boolean;
+  textEditing: boolean;
+  reviewMode: boolean;
+  proposalOpen: boolean;
+  busy: boolean;
+  activeJobs: number;
+}
+
+export interface UpdateFailureNotice {
+  failedAt: string;
+  message: string;
+}
+
+export type UpdateStatus =
+  | { status: 'disabled'; currentVersion: string; message: string; lastFailure?: UpdateFailureNotice }
+  | { status: 'up-to-date'; currentVersion: string; lastFailure?: UpdateFailureNotice }
+  | { status: 'available'; currentVersion: string; offer: { version: string; publishedAt: string; releaseNotes: string; manifestDigest: string; downloaded: boolean }; lastFailure?: UpdateFailureNotice };
+
+export interface SaveCaptionsResponse {
+  project: CaptionProject;
+  correctionsCreated: number;
+}
+
+export interface CorrectionActionResponse {
+  profile: AppProfile;
+  project: CaptionProject | null;
+}
+
+async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(url, options);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Request failed (${res.status})`);
+  }
+  return res.status === 204 ? undefined as T : res.json();
+}
+
+async function jobsRequest(projectId?: string) {
+  ensureJobEventStream();
+  if (jobStreamOpen && jobSnapshot) {
+    return projectId ? jobSnapshot.filter((job) => job.projectId === projectId) : jobSnapshot;
+  }
+  const result = await request<ProcessingJob[]>(`/api/jobs${projectId ? `?projectId=${encodeURIComponent(projectId)}` : ''}`);
+  if (!projectId) jobSnapshot = result;
+  return result;
+}
+
+async function jobMutation<T>(operation: () => Promise<T>) {
+  // Until the server's SSE mutation arrives, force any fallback refresh to ask the
+  // server rather than returning a snapshot from immediately before the mutation.
+  jobSnapshot = null;
+  return operation();
+}
+
+export const api = {
+  health: () => request<HealthResponse>('/api/health'),
+  updateStatus: () => request<UpdateStatus>('/api/updates'),
+  downloadUpdate: (manifestDigest: string, safety: UpdateSafetySnapshot) => request<{ version: string; downloaded: true }>('/api/updates/download', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manifestDigest, safety }) }),
+  installUpdate: (manifestDigest: string, safety: UpdateSafetySnapshot) => request<{ closing: true; version: string }>('/api/updates/install', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ manifestDigest, safety }) }),
+  doctor: () => request<SystemDoctorReport>('/api/system/doctor'),
+  llmSettings: () => request<LlmSettingsStatus>('/api/system/llm-settings'),
+  saveLlmSettings: (input: SaveLlmSettingsInput) => request<LlmSettingsStatus>('/api/system/llm-settings', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+  }),
+  testLlmConnection: (input: { apiKey?: string; model?: string }) => request<LlmConnectionTest>('/api/system/llm-settings/test', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+  }),
+  forgetLlmKey: () => request<LlmSettingsStatus>('/api/system/llm-settings/key', { method: 'DELETE' }),
+  list: () => request<CaptionProject[]>('/api/projects'),
+  listSummaries: () => request<CaptionProjectSummary[]>('/api/projects?summary=1'),
+  get: (id: string, signal?: AbortSignal) => request<CaptionProject>(`/api/projects/${encodeURIComponent(id)}`, { signal }),
+  create: (file: File, title: string) => {
+    const fd = new FormData();
+    fd.append('media', file);
+    fd.append('title', title);
+    return request<CaptionProject>('/api/projects', { method: 'POST', body: fd });
+  },
+  replaceMedia: (id: string, file: File) => {
+    const fd = new FormData();
+    fd.append('media', file);
+    return request<CaptionProject>(`/api/projects/${id}/replace-media`, { method: 'POST', body: fd });
+  },
+  startTranscribeJob: (projectId: string, transcriptionContext: TranscriptionContext, force = false) => jobMutation(() => request<ProcessingJob>('/api/jobs/transcribe', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId, transcriptionContext, force }),
+  })),
+  startRegenerationJob: (projectId: string, startMs: number, endMs: number, transcriptionContext: TranscriptionContext) => jobMutation(() => request<ProcessingJob>('/api/jobs/regenerate-range', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId, startMs, endMs, transcriptionContext }),
+  })),
+  startRefinementJob: (projectId: string, proposalId: string, input: RegenerationRefinementInput) => jobMutation(() => request<ProcessingJob>('/api/jobs/refine-proposal', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId, proposalId, ...input }),
+  })),
+  jobs: jobsRequest,
+  resumeJob: (id: string) => jobMutation(() => request<ProcessingJob>(`/api/jobs/${id}/resume`, { method: 'POST' })),
+  cancelJob: (id: string) => jobMutation(() => request<ProcessingJob>(`/api/jobs/${id}/cancel`, { method: 'POST' })),
+  videoExportCapabilities: (projectId: string, refresh = false) => request<VideoExportCapabilities>(`/api/video-export/${projectId}/capabilities${refresh ? '?refresh=1' : ''}`),
+  saveCaptionAppearance: (projectId: string, appearance: CaptionAppearance) => request<CaptionProject>(`/api/video-export/${projectId}/appearance`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ appearance }),
+  }),
+  startVideoExportJob: (projectId: string, settings: VideoExportSettings, appearance: CaptionAppearance) => jobMutation(() => request<ProcessingJob>(`/api/video-export/${projectId}/jobs`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ settings, appearance }),
+  })),
+  regenerationProposal: (projectId: string, proposalId: string) => request<RegenerationProposal>(`/api/projects/${projectId}/regeneration-proposals/${proposalId}`),
+  applyRegenerationProposal: (projectId: string, proposalId: string, mode: RegenerationApplyMode, editedText?: string) => request<CaptionProject>(`/api/projects/${projectId}/regeneration-proposals/${proposalId}/apply`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode, editedText }),
+  }),
+  saveContext: (id: string, transcriptionContext: TranscriptionContext) => request<CaptionProject>(`/api/projects/${id}/context`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ transcriptionContext }),
+  }),
+  saveCaptions: (id: string, captions: CaptionSegment[], options?: { source?: 'manual-save' | 'autosave' | 'text-edit'; recordCorrections?: boolean }) => request<SaveCaptionsResponse>(`/api/projects/${id}/captions`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ captions, ...options }),
+  }),
+  resegment: (id: string, mode: CaptionMode, maxChars?: number) => request<CaptionProject>(`/api/projects/${id}/resegment`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode, maxChars }),
+  }),
+  normalizeKhmerSpacing: (id: string) => request<CaptionProject>(`/api/projects/${id}/normalize-khmer-spacing`, { method: 'POST' }),
+  postprocessTiming: (id: string, settings: QaProfileSettings) => request<CaptionProject>(`/api/projects/${id}/postprocess-timing`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ settings }),
+  }),
+  history: (id: string) => request<ProjectHistoryEntry[]>(`/api/projects/${id}/history`),
+  restoreHistory: (id: string, historyId: string) => request<CaptionProject>(`/api/projects/${id}/history/${historyId}/restore`, { method: 'POST' }),
+
+  profile: () => request<AppProfile>('/api/profile'),
+  patchProfile: (patch: Partial<AppProfile>) => request<AppProfile>('/api/profile', {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
+  }),
+  importProfile: (profile: AppProfile) => request<AppProfile>('/api/profile/import', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(profile),
+  }),
+  correctionAction: (id: string, action: 'remember-global' | 'add-project' | 'ignore') => request<CorrectionActionResponse>(`/api/profile/corrections/${id}/action`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }),
+  }),
+  contributionStatus: () => request<ContributionStatus>('/api/contribution/status'),
+  withdrawContributions: () => request<ContributionStatus>('/api/contribution/withdraw', { method: 'POST' }),
+};
+

@@ -110,7 +110,8 @@ function Test-LocalTimingVenv {
   $venvPython = Join-Path $Root '.venv\Scripts\python.exe'
   if (-not (Test-Path -LiteralPath $venvPython)) { return $false }
   try {
-    & $venvPython -c "import kfa, onnxruntime; raise SystemExit(0)" *> $null
+    $checkCmd = "import os, appdirs, onnxruntime; from importlib.metadata import version; assert version('kfa') == '0.2.0'; m = os.path.join(appdirs.user_cache_dir(), 'kfa', 'wav2vec2-km-base-1500.onnx'); assert os.path.isfile(m) and os.path.getsize(m) > 100000000; raise SystemExit(0)"
+    & $venvPython -c $checkCmd *> $null
     return $LASTEXITCODE -eq 0
   } catch {
     return $false

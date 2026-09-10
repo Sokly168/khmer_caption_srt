@@ -62,12 +62,40 @@ function Find-Python312Executable {
 $VenvDir = Join-Path $Root '.venv'
 $VenvPython = Join-Path $VenvDir 'Scripts\python.exe'
 
-# If .venv already exists, check if it is completely working
+# Check if existing .venv is executable on this computer
 if (Test-Path -LiteralPath $VenvPython) {
-  $quickCheck = [bool]((& $VenvPython -c "import kfa, faster_whisper, onnxruntime; print('OK')" 2>&1) -match 'OK')
-  if ($quickCheck) {
-    Write-Host "[OK] Local timing environment (.venv) is already complete and verified." -ForegroundColor Green
-    exit 0
+  $canRun = $false
+  try {
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'SilentlyContinue'
+    $r = & $VenvPython -c "import sys; print(sys.version_info[0])" 2>$null
+    $ErrorActionPreference = $prevEap
+    if ($r -match '3') { $canRun = $true }
+  } catch {
+    $canRun = $false
+  }
+
+  if (-not $canRun) {
+    Write-Host "[!] Existing .venv was created for another path or computer. Recreating..." -ForegroundColor Yellow
+    Remove-Item -LiteralPath $VenvDir -Recurse -Force -ErrorAction SilentlyContinue
+  } else {
+    # If completely working (packages + model), exit immediately
+    $quickCheck = $false
+    try {
+      $prevEap = $ErrorActionPreference
+      $ErrorActionPreference = 'SilentlyContinue'
+      $checkCmd = "import os, appdirs, onnxruntime, faster_whisper; from importlib.metadata import version; assert version('kfa') == '0.2.0'; m = os.path.join(appdirs.user_cache_dir(), 'kfa', 'wav2vec2-km-base-1500.onnx'); assert os.path.isfile(m) and os.path.getsize(m) > 100000000; print('OK')"
+      $checkOutput = & $VenvPython -c $checkCmd 2>$null
+      $ErrorActionPreference = $prevEap
+      if ($checkOutput -match 'OK') {
+        $quickCheck = $true
+      }
+    } catch {}
+
+    if ($quickCheck) {
+      Write-Host "[OK] Local timing environment (.venv) is already complete and verified." -ForegroundColor Green
+      exit 0
+    }
   }
 }
 
@@ -123,23 +151,21 @@ if (Test-Path -LiteralPath $whisperReq) {
   }
 }
 
-# Verify local timing packages
-Write-Host "Verifying local timing packages..." -ForegroundColor Yellow
-$verifyCommand = "import kfa, onnxruntime; print('Timing stack OK')"
-$verifyOutput = & $VenvPython -c $verifyCommand 2>&1
-if ($LASTEXITCODE -ne 0 -or $verifyOutput -notmatch 'Timing stack OK') {
-  throw "Local timing verification failed: $verifyOutput"
-}
-Write-Host "[OK] Local timing packages verified." -ForegroundColor Green
+# Verify local timing packages and ensure KFA acoustic model is ready
+Write-Host "Verifying local timing packages and ensuring KFA Khmer acoustic model..." -ForegroundColor Yellow
+Write-Host "(*) First-time setup downloads the Khmer acoustic model (~378 MB) from Hugging Face." -ForegroundColor Cyan
+Write-Host "    If not yet downloaded, please wait a couple of minutes for download to complete..." -ForegroundColor DarkGray
 
-# Prewarm KFA model if possible
-Write-Host "Checking / Prewarming KFA Khmer acoustic model..." -ForegroundColor Yellow
-try {
-  & $VenvPython -c "from kfa import create_session; create_session(); print('KFA Model ready')" *> $null
-  Write-Host "[OK] KFA Khmer model is cached and ready." -ForegroundColor Green
-} catch {
-  Write-Host "KFA model will download automatically on first caption generation." -ForegroundColor DarkGray
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+& $VenvPython -u -c "import onnxruntime; import kfa; print('Timing stack OK')"
+$verifyExit = $LASTEXITCODE
+$ErrorActionPreference = $prevEap
+
+if ($verifyExit -ne 0) {
+  throw "Local timing verification failed with exit code $verifyExit."
 }
+Write-Host "[OK] Local timing packages and KFA Khmer model are ready." -ForegroundColor Green
 
 Write-Host ""
 Write-Host "[OK] Local Khmer caption timing setup finished successfully." -ForegroundColor Green

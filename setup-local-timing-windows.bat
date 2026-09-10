@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title Sthang Studio - Local Khmer Timing Setup
+title Khmer Caption Srt - Local Khmer Timing Setup
 
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\setup-local-timing.ps1"
 set "EXITCODE=%errorlevel%"

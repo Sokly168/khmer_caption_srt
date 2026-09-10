@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title Khmer Captions SRT - Install & Run
+title Khmer Caption SRT - Install & Run
 
 rem Forward to unified installer and launcher
 if exist "%~dp0INSTALL-AND-RUN.bat" (

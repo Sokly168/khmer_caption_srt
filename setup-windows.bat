@@ -1,10 +1,10 @@
 @echo off
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
-title Sthang Studio Setup
+title Khmer Caption SRT
 
 echo ========================================================================
-echo   Sthang Studio - Setting Up Project Dependencies
+echo   Khmer Caption SRT - Setting Up Project Dependencies
 echo   Installing dependencies and building for local use...
 echo ========================================================================
 echo.
@@ -47,7 +47,7 @@ if exist "setup-local-timing-windows.bat" (
 echo.
 
 rem 4. Build project
-echo [*] Building Sthang Studio for local use (npm run build)...
+echo [*] Building Khmer Caption SRT for local use (npm run build)...
 call npm.cmd run build
 if not "!errorlevel!"=="0" (
   echo [ERROR] Project build failed.
@@ -64,7 +64,7 @@ if "!errorlevel!"=="0" (
 
 echo.
 echo ========================================================================
-echo   [OK] Sthang Studio setup and build completed successfully!
+echo   [OK] Khmer Caption SRT setup and build completed successfully!
 echo   [OK] Shortcut "Khmer Captions SRT" is ready on your Desktop!
 echo ========================================================================
 exit /b 0

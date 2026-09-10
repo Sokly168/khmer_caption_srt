@@ -15,14 +15,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\ensure-project
 set "CHECK_EXIT=%errorlevel%"
 if not "%CHECK_EXIT%"=="0" (
   echo.
-  echo [ERROR] Khmer Captions SRT setup could not finish with code %CHECK_EXIT%.
+  echo [ERROR] Khmer Caption SRT setup could not finish with code %CHECK_EXIT%.
   echo Please review the messages above.
   echo.
   pause
   exit /b %CHECK_EXIT%
 )
 
-rem Launch Khmer Captions SRT Studio
+rem Launch Khmer Caption SRT Studio
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\launch-studio.ps1"
 set "EXITCODE=%errorlevel%"
 if not "%EXITCODE%"=="0" (
